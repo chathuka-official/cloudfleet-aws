@@ -31,12 +31,15 @@ require_once __DIR__ . '/config/database.php';
     <p>✅ Amazon RDS Connected</p>
 
     <p>✅ Vehicles Database Ready</p>
+    
 
     <p>
         <a href="vehicles/">
             Open Vehicle Management
         </a>
     </p>
+
+    <p>🚀 Automatic deployment through GitHub Actions is active.</p>
 
 </body>
 
