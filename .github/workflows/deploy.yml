@@ -11,8 +11,14 @@ permissions:
 
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ap-south-1
+      APPLICATION_NAME: CloudFleet
+      ENVIRONMENT_NAME: CloudFleet-dev
+      S3_BUCKET: cloudfleet-deployments-928003954894
+      VERSION_LABEL: github-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
 
@@ -23,7 +29,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::928003954894:role/CloudFleetGitHubDeployRole
-          aws-region: ap-south-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Create deployment ZIP
         run: |
@@ -35,17 +41,17 @@ jobs:
       - name: Upload deployment bundle to S3
         run: |
           aws s3 cp cloudfleet.zip \
-            s3://cloudfleet-deployments-928003954894/cloudfleet-${{ github.sha }}.zip
+            s3://${{ env.S3_BUCKET }}/${{ env.VERSION_LABEL }}.zip
 
       - name: Create Elastic Beanstalk application version
         run: |
           aws elasticbeanstalk create-application-version \
-            --application-name CloudFleet \
-            --version-label github-${{ github.sha }} \
-            --source-bundle S3Bucket=cloudfleet-deployments-928003954894,S3Key=cloudfleet-${{ github.sha }}.zip
+            --application-name "${{ env.APPLICATION_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}" \
+            --source-bundle S3Bucket=${{ env.S3_BUCKET }},S3Key=${{ env.VERSION_LABEL }}.zip
 
       - name: Deploy to CloudFleet-dev
         run: |
           aws elasticbeanstalk update-environment \
-            --environment-name CloudFleet-dev \
-            --version-label github-${{ github.sha }}
+            --environment-name "${{ env.ENVIRONMENT_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}"
