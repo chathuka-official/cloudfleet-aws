@@ -4,12 +4,9 @@ require_once __DIR__ . '/../../config/database.php';
 
 try {
 
-    $pdo->beginTransaction();
-
-
     /*
     |--------------------------------------------------------------------------
-    | TOURS
+    | CREATE TOURS TABLE
     |--------------------------------------------------------------------------
     */
 
@@ -39,7 +36,8 @@ try {
 
             notes TEXT NULL,
 
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP
+                DEFAULT CURRENT_TIMESTAMP,
 
             updated_at TIMESTAMP
                 DEFAULT CURRENT_TIMESTAMP
@@ -53,7 +51,7 @@ try {
 
     /*
     |--------------------------------------------------------------------------
-    | TOUR ASSIGNMENTS
+    | CREATE TOUR ASSIGNMENTS TABLE
     |--------------------------------------------------------------------------
     */
 
@@ -68,22 +66,46 @@ try {
 
             driver_id INT UNSIGNED NOT NULL,
 
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP
+                DEFAULT CURRENT_TIMESTAMP,
 
-            UNIQUE KEY unique_tour_assignment (tour_id),
+            UNIQUE KEY unique_tour_assignment (
+                tour_id
+            ),
+
+            INDEX idx_assignment_vehicle (
+                vehicle_id
+            ),
+
+            INDEX idx_assignment_driver (
+                driver_id
+            ),
 
             CONSTRAINT fk_assignment_tour
+
                 FOREIGN KEY (tour_id)
+
                 REFERENCES tours(id)
+
                 ON DELETE CASCADE,
 
+
             CONSTRAINT fk_assignment_vehicle
+
                 FOREIGN KEY (vehicle_id)
-                REFERENCES vehicles(id),
+
+                REFERENCES vehicles(id)
+
+                ON DELETE RESTRICT,
+
 
             CONSTRAINT fk_assignment_driver
+
                 FOREIGN KEY (driver_id)
+
                 REFERENCES drivers(id)
+
+                ON DELETE RESTRICT
 
         ) ENGINE=InnoDB
         DEFAULT CHARSET=utf8mb4
@@ -91,17 +113,24 @@ try {
     ");
 
 
-    $pdo->commit();
-
     echo "✅ Tours and assignments tables ready.";
+
 
 } catch (PDOException $e) {
 
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
+    error_log(
+        "Tour migration error: " .
+        $e->getMessage()
+    );
 
-    error_log($e->getMessage());
+    echo "❌ Tour migration failed.<br>";
 
-    die("❌ Tour migration failed.");
+    /*
+     * TEMPORARY DEBUG ONLY.
+     * Remove this after the migration works.
+     */
+
+    echo htmlspecialchars(
+        $e->getMessage()
+    );
 }
