@@ -1,28 +1,12 @@
-# Secrets
 .env
 .env.*
 !.env.example
-
-# Local config
-config/local.php
-
-# Deployment ZIP files
 *.zip
-
-# Logs
 *.log
 logs/
-
-# Composer dependencies
 vendor/
-
-# VS Code / IDE
-.vscode/
 .idea/
-
-# Windows / macOS
-Thumbs.db
+.vscode/
 .DS_Store
-
-# Elastic Beanstalk local settings
+Thumbs.db
 .elasticbeanstalk/

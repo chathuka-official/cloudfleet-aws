@@ -16,52 +16,20 @@ jobs:
 
     env:
       AWS_REGION: ap-south-1
-
       APPLICATION_NAME: CloudFleet
       ENVIRONMENT_NAME: CloudFleet-dev
-
       S3_BUCKET: cloudfleet-deployments-928003954894
-
-      # Unique even when the same workflow is re-run
       VERSION_LABEL: github-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
-
-      # --------------------------------------------------
-      # 1. Get CloudFleet code from GitHub
-      # --------------------------------------------------
-
       - name: Checkout repository
         uses: actions/checkout@v4
-
-
-      # --------------------------------------------------
-      # 2. Login to AWS using GitHub OIDC
-      #    No AWS access keys stored in GitHub
-      # --------------------------------------------------
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::928003954894:role/CloudFleetGitHubDeployRole
           aws-region: ${{ env.AWS_REGION }}
-
-
-      # --------------------------------------------------
-      # 3. Show deployment information
-      # --------------------------------------------------
-
-      - name: Show deployment information
-        run: |
-          echo "Application: $APPLICATION_NAME"
-          echo "Environment: $ENVIRONMENT_NAME"
-          echo "Region: $AWS_REGION"
-          echo "Version: $VERSION_LABEL"
-
-
-      # --------------------------------------------------
-      # 4. Create Elastic Beanstalk deployment ZIP
-      # --------------------------------------------------
 
       - name: Create deployment ZIP
         run: |
@@ -70,34 +38,18 @@ jobs:
             -x ".github/*" \
             -x "*.zip"
 
-
-      # --------------------------------------------------
-      # 5. Upload ZIP to our private S3 deployment bucket
-      # --------------------------------------------------
-
       - name: Upload deployment bundle to S3
         run: |
           aws s3 cp cloudfleet.zip \
             "s3://$S3_BUCKET/$VERSION_LABEL.zip"
-
-
-      # --------------------------------------------------
-      # 6. Register the ZIP as a new Beanstalk version
-      # --------------------------------------------------
 
       - name: Create Elastic Beanstalk application version
         run: |
           aws elasticbeanstalk create-application-version \
             --application-name "$APPLICATION_NAME" \
             --version-label "$VERSION_LABEL" \
-            --source-bundle \
-            S3Bucket="$S3_BUCKET",S3Key="$VERSION_LABEL.zip" \
+            --source-bundle S3Bucket="$S3_BUCKET",S3Key="$VERSION_LABEL.zip" \
             --region "$AWS_REGION"
-
-
-      # --------------------------------------------------
-      # 7. Tell CloudFleet-dev to use the new version
-      # --------------------------------------------------
 
       - name: Deploy to CloudFleet-dev
         run: |
@@ -106,19 +58,10 @@ jobs:
             --version-label "$VERSION_LABEL" \
             --region "$AWS_REGION"
 
-
-      # --------------------------------------------------
-      # 8. Wait until Elastic Beanstalk finishes
-      # --------------------------------------------------
-
       - name: Wait for Elastic Beanstalk deployment
         run: |
-
-          echo "Waiting for CloudFleet deployment..."
-
           for i in {1..30}
           do
-
             STATUS=$(aws elasticbeanstalk describe-environments \
               --environment-names "$ENVIRONMENT_NAME" \
               --query "Environments[0].Status" \
@@ -143,40 +86,20 @@ jobs:
                [ "$CURRENT_VERSION" = "$VERSION_LABEL" ] && \
                [ "$HEALTH" = "Green" ]
             then
-
-              echo "CloudFleet deployment completed successfully!"
+              echo "CloudFleet deployment completed successfully."
               exit 0
-
             fi
-
 
             if [ "$STATUS" = "Ready" ] && \
                [ "$CURRENT_VERSION" = "$VERSION_LABEL" ] && \
                [ "$HEALTH" = "Red" ]
             then
-
               echo "Elastic Beanstalk deployment is unhealthy."
               exit 1
-
             fi
 
             sleep 20
-
           done
 
           echo "Deployment timed out."
           exit 1
-
-
-      # --------------------------------------------------
-      # 9. Final deployment information
-      # --------------------------------------------------
-
-      - name: Deployment completed
-        run: |
-          echo "===================================="
-          echo "CloudFleet deployed successfully"
-          echo "===================================="
-          echo "Environment: $ENVIRONMENT_NAME"
-          echo "Version: $VERSION_LABEL"
-          echo "Region: $AWS_REGION"

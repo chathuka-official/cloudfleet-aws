@@ -1,0 +1,89 @@
+CREATE TABLE IF NOT EXISTS vehicles (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    vehicle_code VARCHAR(20) NOT NULL UNIQUE,
+    registration_number VARCHAR(30) NOT NULL UNIQUE,
+    vehicle_name VARCHAR(100) NOT NULL,
+    vehicle_type ENUM('BUS','VAN','CAR','SUV','OTHER') NOT NULL,
+    manufacturer VARCHAR(100) NULL,
+    model VARCHAR(100) NULL,
+    manufacture_year SMALLINT UNSIGNED NULL,
+    capacity SMALLINT UNSIGNED NOT NULL,
+    status ENUM('AVAILABLE','ASSIGNED','MAINTENANCE','INACTIVE') NOT NULL DEFAULT 'AVAILABLE',
+    notes TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS drivers (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    driver_code VARCHAR(20) NOT NULL UNIQUE,
+    full_name VARCHAR(120) NOT NULL,
+    nic_number VARCHAR(30) NULL UNIQUE,
+    phone VARCHAR(30) NOT NULL,
+    email VARCHAR(120) NULL,
+    license_number VARCHAR(50) NOT NULL UNIQUE,
+    license_expiry DATE NOT NULL,
+    license_classes VARCHAR(100) NULL,
+    status ENUM('AVAILABLE','ASSIGNED','ON_LEAVE','INACTIVE') NOT NULL DEFAULT 'AVAILABLE',
+    employment_status ENUM('ACTIVE','SUSPENDED','TERMINATED') NOT NULL DEFAULT 'ACTIVE',
+    emergency_contact_name VARCHAR(120) NULL,
+    emergency_contact_phone VARCHAR(30) NULL,
+    notes TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tours (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    tour_code VARCHAR(30) NOT NULL UNIQUE,
+    title VARCHAR(150) NOT NULL,
+    destination VARCHAR(150) NOT NULL,
+    departure_time DATETIME NOT NULL,
+    return_time DATETIME NOT NULL,
+    passenger_count SMALLINT UNSIGNED NOT NULL,
+    status ENUM('SCHEDULED','IN_PROGRESS','COMPLETED','CANCELLED') NOT NULL DEFAULT 'SCHEDULED',
+    notes TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tour_assignments (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    tour_id INT UNSIGNED NOT NULL,
+    vehicle_id INT UNSIGNED NOT NULL,
+    driver_id INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_tour_assignment (tour_id),
+    INDEX idx_assignment_vehicle (vehicle_id),
+    INDEX idx_assignment_driver (driver_id),
+    CONSTRAINT fk_assignment_tour FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE,
+    CONSTRAINT fk_assignment_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_assignment_driver FOREIGN KEY (driver_id) REFERENCES drivers(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS maintenance_records (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    vehicle_id INT UNSIGNED NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    description TEXT NULL,
+    maintenance_date DATE NOT NULL,
+    cost DECIMAL(10,2) NULL,
+    status ENUM('PLANNED','IN_PROGRESS','COMPLETED') NOT NULL DEFAULT 'PLANNED',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_maintenance_vehicle (vehicle_id),
+    CONSTRAINT fk_maintenance_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS documents (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    entity_type ENUM('VEHICLE','DRIVER','TOUR','OTHER') NOT NULL,
+    entity_id INT UNSIGNED NULL,
+    title VARCHAR(150) NOT NULL,
+    s3_key VARCHAR(500) NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(120) NULL,
+    size_bytes BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_documents_entity (entity_type, entity_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

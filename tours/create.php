@@ -1,849 +1,181 @@
 <?php
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/layout.php';
+require_once __DIR__ . '/../app/tour_rules.php';
+
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+$isEdit = basename(__FILE__) === 'edit.php';
+
+$tour = [
+    'tour_code' => '',
+    'title' => '',
+    'destination' => '',
+    'departure_time' => '',
+    'return_time' => '',
+    'passenger_count' => '',
+    'vehicle_id' => '',
+    'driver_id' => '',
+    'notes' => ''
+];
+
+if ($isEdit) {
+    if (!$id) die('Invalid tour.');
+    $stmt = $pdo->prepare("
+        SELECT t.*, a.vehicle_id, a.driver_id
+        FROM tours t
+        LEFT JOIN tour_assignments a ON a.tour_id=t.id
+        WHERE t.id=?
+    ");
+    $stmt->execute([$id]);
+    $tour = $stmt->fetch();
+    if (!$tour) die('Tour not found.');
+    if ($tour['status'] !== 'SCHEDULED') die('Only scheduled tours can be edited.');
+
+    $tour['departure_time'] = date('Y-m-d\TH:i', strtotime($tour['departure_time']));
+    $tour['return_time'] = date('Y-m-d\TH:i', strtotime($tour['return_time']));
+}
+
+$vehicles = $pdo->query("SELECT * FROM vehicles WHERE status NOT IN ('MAINTENANCE','INACTIVE') ORDER BY vehicle_name")->fetchAll();
+$drivers = $pdo->query("SELECT * FROM drivers WHERE status NOT IN ('ON_LEAVE','INACTIVE') AND employment_status='ACTIVE' ORDER BY full_name")->fetchAll();
 
 $error = '';
 
-
-/*
-|--------------------------------------------------------------------------
-| GET VEHICLES
-|--------------------------------------------------------------------------
-*/
-
-$vehicles = $pdo->query("
-    SELECT *
-    FROM vehicles
-    WHERE status NOT IN (
-        'MAINTENANCE',
-        'INACTIVE'
-    )
-    ORDER BY vehicle_name
-")->fetchAll();
-
-
-/*
-|--------------------------------------------------------------------------
-| GET DRIVERS
-|--------------------------------------------------------------------------
-*/
-
-$drivers = $pdo->query("
-    SELECT *
-    FROM drivers
-    WHERE
-        status NOT IN (
-            'ON_LEAVE',
-            'INACTIVE'
-        )
-
-        AND employment_status = 'ACTIVE'
-
-    ORDER BY full_name
-")->fetchAll();
-
-
-/*
-|--------------------------------------------------------------------------
-| CREATE TOUR
-|--------------------------------------------------------------------------
-*/
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    $tourCode =
-        trim($_POST['tour_code'] ?? '');
-
-    $title =
-        trim($_POST['title'] ?? '');
-
-    $destination =
-        trim($_POST['destination'] ?? '');
-
-    $departure =
-        $_POST['departure_time'] ?? '';
-
-    $return =
-        $_POST['return_time'] ?? '';
-
-    $passengers =
-        (int)($_POST['passenger_count'] ?? 0);
-
-    $vehicleId =
-        filter_input(
-            INPUT_POST,
-            'vehicle_id',
-            FILTER_VALIDATE_INT
-        );
-
-    $driverId =
-        filter_input(
-            INPUT_POST,
-            'driver_id',
-            FILTER_VALIDATE_INT
-        );
-
-    $notes =
-        trim($_POST['notes'] ?? '');
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | BASIC VALIDATION
-    |--------------------------------------------------------------------------
-    */
+    $tour = [
+        'tour_code' => trim($_POST['tour_code'] ?? ''),
+        'title' => trim($_POST['title'] ?? ''),
+        'destination' => trim($_POST['destination'] ?? ''),
+        'departure_time' => $_POST['departure_time'] ?? '',
+        'return_time' => $_POST['return_time'] ?? '',
+        'passenger_count' => (int)($_POST['passenger_count'] ?? 0),
+        'vehicle_id' => filter_input(INPUT_POST, 'vehicle_id', FILTER_VALIDATE_INT),
+        'driver_id' => filter_input(INPUT_POST, 'driver_id', FILTER_VALIDATE_INT),
+        'notes' => trim($_POST['notes'] ?? '')
+    ];
 
     if (
-        $tourCode === '' ||
-        $title === '' ||
-        $destination === '' ||
-        $departure === '' ||
-        $return === '' ||
-        $passengers <= 0 ||
-        !$vehicleId ||
-        !$driverId
+        $tour['tour_code']==='' || $tour['title']==='' || $tour['destination']==='' ||
+        !$tour['vehicle_id'] || !$tour['driver_id']
     ) {
-
-        $error =
-            'Please complete all required fields.';
-
-    } elseif (
-        strtotime($return) <=
-        strtotime($departure)
-    ) {
-
-        $error =
-            'Return time must be after departure time.';
-
+        $error = 'Please complete all required fields.';
     } else {
-
         try {
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | LOAD VEHICLE
-            |--------------------------------------------------------------------------
-            */
-
-            $stmt = $pdo->prepare("
-                SELECT *
-                FROM vehicles
-                WHERE id = ?
-            ");
-
-            $stmt->execute([$vehicleId]);
-
-            $vehicle = $stmt->fetch();
-
-
-            if (!$vehicle) {
-
-                throw new Exception(
-                    'Selected vehicle does not exist.'
-                );
-            }
-
-
-            if (
-                in_array(
-                    $vehicle['status'],
-                    [
-                        'MAINTENANCE',
-                        'INACTIVE'
-                    ],
-                    true
-                )
-            ) {
-
-                throw new Exception(
-                    'Selected vehicle is not operational.'
-                );
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | CAPACITY CHECK
-            |--------------------------------------------------------------------------
-            */
-
-            if (
-                $passengers >
-                (int)$vehicle['capacity']
-            ) {
-
-                throw new Exception(
-                    'Passenger count exceeds vehicle capacity.'
-                );
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | LOAD DRIVER
-            |--------------------------------------------------------------------------
-            */
-
-            $stmt = $pdo->prepare("
-                SELECT *
-                FROM drivers
-                WHERE id = ?
-            ");
-
-            $stmt->execute([$driverId]);
-
-            $driver = $stmt->fetch();
-
-
-            if (!$driver) {
-
-                throw new Exception(
-                    'Selected driver does not exist.'
-                );
-            }
-
-
-            if (
-                $driver['employment_status']
-                !== 'ACTIVE'
-            ) {
-
-                throw new Exception(
-                    'Selected driver is not actively employed.'
-                );
-            }
-
-
-            if (
-                in_array(
-                    $driver['status'],
-                    [
-                        'ON_LEAVE',
-                        'INACTIVE'
-                    ],
-                    true
-                )
-            ) {
-
-                throw new Exception(
-                    'Selected driver is currently unavailable.'
-                );
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | DRIVER LICENCE CHECK
-            |--------------------------------------------------------------------------
-            */
-
-            $tripEndDate =
-                date(
-                    'Y-m-d',
-                    strtotime($return)
-                );
-
-
-            if (
-                $driver['license_expiry']
-                < $tripEndDate
-            ) {
-
-                throw new Exception(
-                    'Driver licence expires before this tour is completed.'
-                );
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | VEHICLE SCHEDULE CONFLICT
-            |--------------------------------------------------------------------------
-            |
-            | Existing:
-            |    start < new return
-            |
-            | AND
-            |
-            |    existing return > new start
-            |
-            | means the two tours overlap.
-            |
-            */
-
-            $stmt = $pdo->prepare("
-                SELECT
-                    t.tour_code,
-                    t.title,
-                    t.departure_time,
-                    t.return_time
-
-                FROM tours t
-
-                INNER JOIN tour_assignments a
-                    ON a.tour_id = t.id
-
-                WHERE
-                    a.vehicle_id = :vehicle_id
-
-                    AND t.status IN (
-                        'SCHEDULED',
-                        'IN_PROGRESS'
-                    )
-
-                    AND t.departure_time < :return_time
-
-                    AND t.return_time > :departure_time
-
-                LIMIT 1
-            ");
-
-            $stmt->execute([
-
-                'vehicle_id' =>
-                    $vehicleId,
-
-                'return_time' =>
-                    $return,
-
-                'departure_time' =>
-                    $departure
-
-            ]);
-
-            $vehicleConflict =
-                $stmt->fetch();
-
-
-            if ($vehicleConflict) {
-
-                throw new Exception(
-                    'Vehicle already has an overlapping tour: ' .
-                    $vehicleConflict['tour_code'] .
-                    ' - ' .
-                    $vehicleConflict['title']
-                );
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | DRIVER SCHEDULE CONFLICT
-            |--------------------------------------------------------------------------
-            */
-
-            $stmt = $pdo->prepare("
-                SELECT
-                    t.tour_code,
-                    t.title,
-                    t.departure_time,
-                    t.return_time
-
-                FROM tours t
-
-                INNER JOIN tour_assignments a
-                    ON a.tour_id = t.id
-
-                WHERE
-                    a.driver_id = :driver_id
-
-                    AND t.status IN (
-                        'SCHEDULED',
-                        'IN_PROGRESS'
-                    )
-
-                    AND t.departure_time < :return_time
-
-                    AND t.return_time > :departure_time
-
-                LIMIT 1
-            ");
-
-            $stmt->execute([
-
-                'driver_id' =>
-                    $driverId,
-
-                'return_time' =>
-                    $return,
-
-                'departure_time' =>
-                    $departure
-
-            ]);
-
-            $driverConflict =
-                $stmt->fetch();
-
-
-            if ($driverConflict) {
-
-                throw new Exception(
-                    'Driver already has an overlapping tour: ' .
-                    $driverConflict['tour_code'] .
-                    ' - ' .
-                    $driverConflict['title']
-                );
-            }
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | DATABASE TRANSACTION
-            |--------------------------------------------------------------------------
-            */
+            $check = checkTourAssignment(
+                $pdo,
+                (int)$tour['vehicle_id'],
+                (int)$tour['driver_id'],
+                $tour['departure_time'],
+                $tour['return_time'],
+                (int)$tour['passenger_count'],
+                $isEdit ? $id : null
+            );
 
             $pdo->beginTransaction();
 
+            if ($isEdit) {
+                $stmt = $pdo->prepare("
+                    UPDATE tours SET
+                        tour_code=:tour_code,title=:title,destination=:destination,
+                        departure_time=:departure_time,return_time=:return_time,
+                        passenger_count=:passenger_count,notes=:notes
+                    WHERE id=:id
+                ");
+                $stmt->execute([
+                    'tour_code'=>$tour['tour_code'],
+                    'title'=>$tour['title'],
+                    'destination'=>$tour['destination'],
+                    'departure_time'=>$check['departure'],
+                    'return_time'=>$check['return'],
+                    'passenger_count'=>$tour['passenger_count'],
+                    'notes'=>$tour['notes'] ?: null,
+                    'id'=>$id
+                ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | CREATE TOUR
-            |--------------------------------------------------------------------------
-            */
+                $stmt = $pdo->prepare("UPDATE tour_assignments SET vehicle_id=?, driver_id=? WHERE tour_id=?");
+                $stmt->execute([$tour['vehicle_id'],$tour['driver_id'],$id]);
 
-            $stmt = $pdo->prepare("
-                INSERT INTO tours (
-                    tour_code,
-                    title,
-                    destination,
-                    departure_time,
-                    return_time,
-                    passenger_count,
-                    notes
-                )
+                flash('success', 'Tour updated.');
+                $targetId = $id;
+            } else {
+                $stmt = $pdo->prepare("
+                    INSERT INTO tours
+                    (tour_code,title,destination,departure_time,return_time,passenger_count,notes)
+                    VALUES
+                    (:tour_code,:title,:destination,:departure_time,:return_time,:passenger_count,:notes)
+                ");
+                $stmt->execute([
+                    'tour_code'=>$tour['tour_code'],
+                    'title'=>$tour['title'],
+                    'destination'=>$tour['destination'],
+                    'departure_time'=>$check['departure'],
+                    'return_time'=>$check['return'],
+                    'passenger_count'=>$tour['passenger_count'],
+                    'notes'=>$tour['notes'] ?: null
+                ]);
 
-                VALUES (
-                    :tour_code,
-                    :title,
-                    :destination,
-                    :departure_time,
-                    :return_time,
-                    :passenger_count,
-                    :notes
-                )
-            ");
+                $targetId = (int)$pdo->lastInsertId();
 
+                $stmt = $pdo->prepare("INSERT INTO tour_assignments (tour_id,vehicle_id,driver_id) VALUES (?,?,?)");
+                $stmt->execute([$targetId,$tour['vehicle_id'],$tour['driver_id']]);
 
-            $stmt->execute([
-
-                'tour_code' =>
-                    $tourCode,
-
-                'title' =>
-                    $title,
-
-                'destination' =>
-                    $destination,
-
-                'departure_time' =>
-                    $departure,
-
-                'return_time' =>
-                    $return,
-
-                'passenger_count' =>
-                    $passengers,
-
-                'notes' =>
-                    $notes ?: null
-
-            ]);
-
-
-            $tourId =
-                (int)$pdo->lastInsertId();
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | CREATE ASSIGNMENT
-            |--------------------------------------------------------------------------
-            */
-
-            $stmt = $pdo->prepare("
-                INSERT INTO tour_assignments (
-                    tour_id,
-                    vehicle_id,
-                    driver_id
-                )
-
-                VALUES (
-                    :tour_id,
-                    :vehicle_id,
-                    :driver_id
-                )
-            ");
-
-
-            $stmt->execute([
-
-                'tour_id' =>
-                    $tourId,
-
-                'vehicle_id' =>
-                    $vehicleId,
-
-                'driver_id' =>
-                    $driverId
-
-            ]);
-
-
-            $pdo->commit();
-
-
-            header(
-                'Location: index.php'
-            );
-
-            exit;
-
-
-        } catch (Throwable $e) {
-
-
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
+                flash('success', 'Tour created.');
             }
 
-
-            error_log(
-                $e->getMessage()
-            );
-
-
-            $error =
-                $e->getMessage();
+            $pdo->commit();
+            redirect('view.php?id=' . $targetId);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            error_log($e->getMessage());
+            $error = $e->getMessage();
         }
     }
 }
 
+page_start($isEdit ? 'Edit Tour' : 'Create Tour', 'tours');
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        Create Tour | CloudFleet
-    </title>
-
-    <link
-        rel="stylesheet"
-        href="../assets/css/app.css"
-    >
-
-</head>
-
-<body>
-
-
-<main class="content">
-
-
 <div class="page-header">
-
-    <div>
-
-        <h1>
-            Create Tour
-        </h1>
-
-        <p>
-            Schedule a tour and assign fleet resources.
-        </p>
-
-    </div>
-
+    <div><h1><?= $isEdit ? 'Edit Tour' : 'Create Tour' ?></h1><p>Schedule a tour and assign fleet resources.</p></div>
+    <a class="btn btn-secondary" href="index.php">Back</a>
 </div>
 
-
-<?php if ($error): ?>
-
-
-<div
-    style="
-        background:#fee2e2;
-        border:1px solid #fecaca;
-        color:#991b1b;
-        padding:15px;
-        border-radius:10px;
-        margin-bottom:20px;
-    "
->
-
-    <?= htmlspecialchars($error) ?>
-
-</div>
-
-
-<?php endif; ?>
-
+<?php if ($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 
 <div class="panel">
-
-
-<form
-    method="POST"
-    style="padding:25px;"
->
-
-
-<p>
-
-    <label>
-        Tour Code *
-    </label>
-
-    <br>
-
-    <input
-        type="text"
-        name="tour_code"
-        placeholder="TR-2026-0001"
-        required
-    >
-
-</p>
-
-
-<p>
-
-    <label>
-        Tour Title *
-    </label>
-
-    <br>
-
-    <input
-        type="text"
-        name="title"
-        placeholder="NSBM Kandy Trip"
-        required
-    >
-
-</p>
-
-
-<p>
-
-    <label>
-        Destination *
-    </label>
-
-    <br>
-
-    <input
-        type="text"
-        name="destination"
-        placeholder="Kandy"
-        required
-    >
-
-</p>
-
-
-<p>
-
-    <label>
-        Departure *
-    </label>
-
-    <br>
-
-    <input
-        type="datetime-local"
-        name="departure_time"
-        required
-    >
-
-</p>
-
-
-<p>
-
-    <label>
-        Return *
-    </label>
-
-    <br>
-
-    <input
-        type="datetime-local"
-        name="return_time"
-        required
-    >
-
-</p>
-
-
-<p>
-
-    <label>
-        Passenger Count *
-    </label>
-
-    <br>
-
-    <input
-        type="number"
-        name="passenger_count"
-        min="1"
-        required
-    >
-
-</p>
-
-
-<p>
-
-    <label>
-        Vehicle *
-    </label>
-
-    <br>
-
-    <select
-        name="vehicle_id"
-        required
-    >
-
-        <option value="">
-            Select vehicle
-        </option>
-
-
-        <?php foreach ($vehicles as $vehicle): ?>
-
-
-        <option
-            value="<?= (int)$vehicle['id'] ?>"
-        >
-
-            <?= htmlspecialchars(
-                $vehicle['vehicle_code']
-            ) ?>
-
-            -
-
-            <?= htmlspecialchars(
-                $vehicle['vehicle_name']
-            ) ?>
-
-            (
-
-            <?= (int)$vehicle['capacity'] ?>
-
-            seats)
-
-        </option>
-
-
-        <?php endforeach; ?>
-
-
-    </select>
-
-</p>
-
-
-<p>
-
-    <label>
-        Driver *
-    </label>
-
-    <br>
-
-    <select
-        name="driver_id"
-        required
-    >
-
-        <option value="">
-            Select driver
-        </option>
-
-
-        <?php foreach ($drivers as $driver): ?>
-
-
-        <option
-            value="<?= (int)$driver['id'] ?>"
-        >
-
-            <?= htmlspecialchars(
-                $driver['driver_code']
-            ) ?>
-
-            -
-
-            <?= htmlspecialchars(
-                $driver['full_name']
-            ) ?>
-
-        </option>
-
-
-        <?php endforeach; ?>
-
-
-    </select>
-
-</p>
-
-
-<p>
-
-    <label>
-        Notes
-    </label>
-
-    <br>
-
-    <textarea
-        name="notes"
-        rows="4"
-    ></textarea>
-
-</p>
-
-
-<button
-    type="submit"
-    class="btn btn-primary"
->
-    Create Tour
-</button>
-
-
-<a
-    href="index.php"
-    class="btn btn-secondary"
->
-    Cancel
-</a>
-
-
+<form class="form-grid" method="POST">
+    <div class="form-group"><label>Tour Code *</label><input name="tour_code" value="<?= e($tour['tour_code']) ?>" required></div>
+    <div class="form-group"><label>Title *</label><input name="title" value="<?= e($tour['title']) ?>" required></div>
+    <div class="form-group full"><label>Destination *</label><input name="destination" value="<?= e($tour['destination']) ?>" required></div>
+    <div class="form-group"><label>Departure *</label><input type="datetime-local" name="departure_time" value="<?= e($tour['departure_time']) ?>" required></div>
+    <div class="form-group"><label>Return *</label><input type="datetime-local" name="return_time" value="<?= e($tour['return_time']) ?>" required></div>
+    <div class="form-group"><label>Passengers *</label><input type="number" name="passenger_count" min="1" value="<?= e((string)$tour['passenger_count']) ?>" required></div>
+
+    <div class="form-group"><label>Vehicle *</label>
+        <select name="vehicle_id" required>
+            <option value="">Select vehicle</option>
+            <?php foreach ($vehicles as $v): ?>
+                <option value="<?= (int)$v['id'] ?>" <?= (int)$tour['vehicle_id']===(int)$v['id']?'selected':'' ?>>
+                    <?= e($v['vehicle_code'].' - '.$v['vehicle_name'].' ('.$v['capacity'].' seats)') ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+
+    <div class="form-group full"><label>Driver *</label>
+        <select name="driver_id" required>
+            <option value="">Select driver</option>
+            <?php foreach ($drivers as $d): ?>
+                <option value="<?= (int)$d['id'] ?>" <?= (int)$tour['driver_id']===(int)$d['id']?'selected':'' ?>>
+                    <?= e($d['driver_code'].' - '.$d['full_name']) ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+
+    <div class="form-group full"><label>Notes</label><textarea name="notes" rows="4"><?= e($tour['notes'] ?? '') ?></textarea></div>
+    <div class="form-actions"><button class="btn btn-primary"><?= $isEdit ? 'Save Changes' : 'Create Tour' ?></button><a class="btn btn-secondary" href="index.php">Cancel</a></div>
 </form>
-
-
 </div>
 
-
-</main>
-
-
-</body>
-
-</html>
+<?php page_end(); ?>
