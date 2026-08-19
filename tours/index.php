@@ -1,13 +1,12 @@
 <?php
 
+session_start();
+
 require_once __DIR__ . '/../config/database.php';
 
-
-/*
-|--------------------------------------------------------------------------
-| FILTERS
-|--------------------------------------------------------------------------
-*/
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 $search = trim($_GET['search'] ?? '');
 $status = trim($_GET['status'] ?? '');
@@ -403,6 +402,8 @@ $stats = $pdo->query("
 
     <th>Status</th>
 
+    <th>Actions</th>
+
 </tr>
 
 </thead>
@@ -551,6 +552,120 @@ $statusClass = match ($tour['status']) {
         ) ?>
 
     </span>
+
+</td>
+<td>
+
+<div class="actions">
+
+    <a
+        href="view.php?id=<?= (int)$tour['id'] ?>"
+        class="btn btn-secondary"
+    >
+        View
+    </a>
+
+
+    <?php if ($tour['status'] === 'SCHEDULED'): ?>
+
+        <form method="POST" action="status.php">
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>"
+            >
+
+            <input
+                type="hidden"
+                name="tour_id"
+                value="<?= (int)$tour['id'] ?>"
+            >
+
+            <input
+                type="hidden"
+                name="action"
+                value="start"
+            >
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Start
+            </button>
+
+        </form>
+
+
+        <form
+            method="POST"
+            action="status.php"
+            onsubmit="return confirm('Cancel this tour?');"
+        >
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>"
+            >
+
+            <input
+                type="hidden"
+                name="tour_id"
+                value="<?= (int)$tour['id'] ?>"
+            >
+
+            <input
+                type="hidden"
+                name="action"
+                value="cancel"
+            >
+
+            <button
+                type="submit"
+                class="btn btn-danger"
+            >
+                Cancel
+            </button>
+
+        </form>
+
+
+    <?php elseif ($tour['status'] === 'IN_PROGRESS'): ?>
+
+        <form method="POST" action="status.php">
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>"
+            >
+
+            <input
+                type="hidden"
+                name="tour_id"
+                value="<?= (int)$tour['id'] ?>"
+            >
+
+            <input
+                type="hidden"
+                name="action"
+                value="complete"
+            >
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Complete
+            </button>
+
+        </form>
+
+    <?php endif; ?>
+
+</div>
 
 </td>
 
