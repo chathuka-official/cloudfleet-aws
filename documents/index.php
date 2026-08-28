@@ -50,6 +50,30 @@ page_start('Documents', 'documents');
         Download
     </a>
 </td>
+<td>
+    <a class="btn btn-secondary"
+       href="download.php?id=<?= (int)$d['id'] ?>">
+        Download
+    </a>
+
+    <form method="POST"
+          action="delete.php"
+          style="display:inline;"
+          onsubmit="return confirm('Delete this document?');">
+
+        <input type="hidden"
+               name="csrf_token"
+               value="<?= e(csrf_token()) ?>">
+
+        <input type="hidden"
+               name="id"
+               value="<?= (int)$d['id'] ?>">
+
+        <button type="submit" class="btn btn-danger">
+            Delete
+        </button>
+    </form>
+</td>
 </tr>
 <?php endforeach; ?>
 </tbody>
