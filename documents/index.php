@@ -26,7 +26,16 @@ page_start('Documents', 'documents');
     <div class="empty-state">No documents stored yet.</div>
 <?php else: ?>
 <table>
-<thead><tr><th>Title</th><th>Entity</th><th>File</th><th>Size</th><th>Uploaded</th></tr></thead>
+<thead>
+<tr>
+    <th>Title</th>
+    <th>Entity</th>
+    <th>File</th>
+    <th>Size</th>
+    <th>Uploaded</th>
+    <th>Action</th>
+</tr>
+</thead>
 <tbody>
 <?php foreach ($documents as $d): ?>
 <tr>
@@ -35,6 +44,12 @@ page_start('Documents', 'documents');
     <td><?= e($d['original_name']) ?></td>
     <td><?= $d['size_bytes'] ? number_format(((int)$d['size_bytes'])/1024,1).' KB' : '-' ?></td>
     <td><?= e($d['created_at']) ?></td>
+    <td>
+    <a class="btn btn-secondary"
+       href="download.php?id=<?= (int)$d['id'] ?>">
+        Download
+    </a>
+</td>
 </tr>
 <?php endforeach; ?>
 </tbody>
