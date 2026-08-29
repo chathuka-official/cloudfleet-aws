@@ -40,7 +40,7 @@ if (!$id) {
         'Invalid document.'
     );
 
-    redirect('index.php');
+    redirect('trash.php');
 }
 
 
@@ -48,7 +48,7 @@ $stmt = $pdo->prepare("
     SELECT *
     FROM documents
     WHERE id = ?
-    AND deleted_at IS NULL
+    AND deleted_at IS NOT NULL
 ");
 
 $stmt->execute([$id]);
@@ -60,10 +60,27 @@ if (!$document) {
 
     flash(
         'error',
-        'Document not found.'
+        'Deleted document not found.'
     );
 
-    redirect('index.php');
+    redirect('trash.php');
+}
+
+
+if (
+    empty(
+        $document[
+            'delete_marker_version_id'
+        ]
+    )
+) {
+
+    flash(
+        'error',
+        'The S3 delete marker information is missing.'
+    );
+
+    redirect('trash.php');
 }
 
 
@@ -85,7 +102,7 @@ if ($bucket === '') {
         'S3 bucket is not configured.'
     );
 
-    redirect('index.php');
+    redirect('trash.php');
 }
 
 
@@ -98,73 +115,64 @@ try {
 
 
     /*
-     * Because S3 Versioning is enabled,
-     * DeleteObject creates a delete marker.
+     * Delete ONLY the delete marker.
+     *
+     * The previous real object version then
+     * becomes the current object again.
      */
-    $result =
-        $s3->deleteObject([
+    $s3->deleteObject([
 
-            'Bucket' => $bucket,
+        'Bucket' => $bucket,
 
-            'Key' =>
-                $document['s3_key']
+        'Key' =>
+            $document['s3_key'],
 
-        ]);
+        'VersionId' =>
+            $document[
+                'delete_marker_version_id'
+            ]
 
-
-    $deleteMarkerVersionId =
-        $result['VersionId']
-        ?? null;
-
-
-    if (!$deleteMarkerVersionId) {
-
-        throw new RuntimeException(
-            'S3 did not return a delete marker version ID.'
-        );
-    }
+    ]);
 
 
     /*
-     * Keep the database record.
-     *
-     * We only mark it as deleted.
+     * Restore the RDS record.
      */
     $update = $pdo->prepare("
         UPDATE documents
         SET
-            deleted_at = NOW(),
-            delete_marker_version_id = ?
+            deleted_at = NULL,
+            delete_marker_version_id = NULL
         WHERE id = ?
     ");
 
 
-    $update->execute([
-        $deleteMarkerVersionId,
-        $id
-    ]);
+    $update->execute([$id]);
 
 
     flash(
         'success',
-        'Document moved to the recycle bin.'
+        'Document restored successfully from Amazon S3.'
     );
+
+
+    redirect('index.php');
 
 
 } catch (Throwable $e) {
 
     error_log(
-        'Document delete error: '
+        'Document restore error: '
         . $e->getMessage()
     );
 
 
     flash(
         'error',
-        'Unable to delete document. Check S3 permissions and versioning.'
+        'Unable to restore document. Check the S3 IAM permissions.'
     );
 
+
+    redirect('trash.php');
+
 }
-
-
-redirect('index.php');

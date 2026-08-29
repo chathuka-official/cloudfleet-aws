@@ -3,9 +3,12 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/layout.php';
 
-$documents = $pdo
-    ->query("SELECT * FROM documents ORDER BY created_at DESC")
-    ->fetchAll();
+$documents = $pdo->query("
+    SELECT *
+    FROM documents
+    WHERE deleted_at IS NULL
+    ORDER BY created_at DESC
+")->fetchAll();
 
 $s3Bucket = $_SERVER['S3_BUCKET'] ?? getenv('S3_BUCKET') ?: '';
 
@@ -19,11 +22,21 @@ page_start('Documents', 'documents');
         <p>Amazon S3-backed CloudFleet document storage.</p>
     </div>
 
-    <?php if ($s3Bucket): ?>
-        <a class="btn btn-primary" href="upload.php">
-            + Upload Document
+    <div class="actions">
+
+        <a class="btn btn-secondary" href="trash.php">
+            Recycle Bin
         </a>
-    <?php endif; ?>
+
+        <?php if ($s3Bucket): ?>
+
+            <a class="btn btn-primary" href="upload.php">
+                + Upload Document
+            </a>
+
+        <?php endif; ?>
+
+    </div>
 
 </div>
 
@@ -31,7 +44,7 @@ page_start('Documents', 'documents');
 <?php if (!$s3Bucket): ?>
 
 <div class="alert warning">
-    S3 is not configured.
+    Amazon S3 is not configured.
 </div>
 
 <?php endif; ?>
@@ -42,7 +55,7 @@ page_start('Documents', 'documents');
 <?php if (!$documents): ?>
 
     <div class="empty-state">
-        No documents stored yet.
+        No active documents.
     </div>
 
 <?php else: ?>
@@ -50,6 +63,7 @@ page_start('Documents', 'documents');
 <table>
 
 <thead>
+
 <tr>
     <th>Title</th>
     <th>Entity</th>
@@ -58,7 +72,9 @@ page_start('Documents', 'documents');
     <th>Uploaded</th>
     <th>Action</th>
 </tr>
+
 </thead>
+
 
 <tbody>
 
@@ -70,71 +86,90 @@ page_start('Documents', 'documents');
         <?= e($d['title']) ?>
     </td>
 
+
     <td>
+
         <?= e($d['entity_type']) ?>
 
-        <?php if ($d['entity_id']): ?>
+        <?php if (!empty($d['entity_id'])): ?>
+
             #<?= (int)$d['entity_id'] ?>
+
         <?php endif; ?>
+
     </td>
+
 
     <td>
         <?= e($d['original_name']) ?>
     </td>
 
+
     <td>
-        <?php
-        if ($d['size_bytes']) {
-            echo number_format(
+
+        <?php if (!empty($d['size_bytes'])): ?>
+
+            <?= number_format(
                 ((int)$d['size_bytes']) / 1024,
                 1
-            ) . ' KB';
-        } else {
-            echo '-';
-        }
-        ?>
+            ) ?> KB
+
+        <?php else: ?>
+
+            -
+
+        <?php endif; ?>
+
     </td>
+
 
     <td>
         <?= e($d['created_at']) ?>
     </td>
 
+
     <td>
 
-        <a
-            class="btn btn-secondary"
-            href="download.php?id=<?= (int)$d['id'] ?>"
-        >
-            Download
-        </a>
+        <div class="actions">
 
-        <form
-            method="POST"
-            action="delete.php"
-            style="display:inline-block;"
-            onsubmit="return confirm('Are you sure you want to delete this document?');"
-        >
+            <a
+                class="btn btn-secondary"
+                href="download.php?id=<?= (int)$d['id'] ?>"
+            >
+                Download
+            </a>
 
-            <input
-                type="hidden"
-                name="csrf_token"
-                value="<?= e(csrf_token()) ?>"
+
+            <form
+                method="POST"
+                action="delete.php"
+                onsubmit="return confirm(
+                    'Move this document to the recycle bin?'
+                );"
             >
 
-            <input
-                type="hidden"
-                name="id"
-                value="<?= (int)$d['id'] ?>"
-            >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= e(csrf_token()) ?>"
+                >
 
-            <button
-                type="submit"
-                class="btn btn-danger"
-            >
-                Delete
-            </button>
+                <input
+                    type="hidden"
+                    name="id"
+                    value="<?= (int)$d['id'] ?>"
+                >
 
-        </form>
+                <button
+                    type="submit"
+                    class="btn btn-danger"
+                >
+                    Delete
+                </button>
+
+            </form>
+
+        </div>
 
     </td>
 
