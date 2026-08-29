@@ -44,12 +44,7 @@ page_start('Documents', 'documents');
     <td><?= e($d['original_name']) ?></td>
     <td><?= $d['size_bytes'] ? number_format(((int)$d['size_bytes'])/1024,1).' KB' : '-' ?></td>
     <td><?= e($d['created_at']) ?></td>
-    <td>
-    <a class="btn btn-secondary"
-       href="download.php?id=<?= (int)$d['id'] ?>">
-        Download
-    </a>
-</td>
+   
 <td>
     <a class="btn btn-secondary"
        href="download.php?id=<?= (int)$d['id'] ?>">
