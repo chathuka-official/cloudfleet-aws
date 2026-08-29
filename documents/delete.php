@@ -23,11 +23,11 @@ verify_csrf();
 $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
 
 if (!$id) {
-    die('Invalid document.');
+    die('Invalid document ID.');
 }
 
 $stmt = $pdo->prepare("
-    SELECT id, s3_key, original_name
+    SELECT id, s3_key
     FROM documents
     WHERE id = ?
 ");
@@ -37,44 +37,52 @@ $stmt->execute([$id]);
 $document = $stmt->fetch();
 
 if (!$document) {
-    die('Document not found.');
+    flash('error', 'Document not found.');
+    redirect('index.php');
 }
 
 $bucket = $_SERVER['S3_BUCKET'] ?? getenv('S3_BUCKET') ?: '';
 $region = $_SERVER['AWS_REGION'] ?? getenv('AWS_REGION') ?: 'ap-south-1';
 
 if ($bucket === '') {
-    die('S3 bucket is not configured.');
+    flash('error', 'S3 bucket is not configured.');
+    redirect('index.php');
 }
 
 try {
 
     $s3 = new S3Client([
         'version' => 'latest',
-        'region' => $region
+        'region'  => $region
     ]);
 
+    // Delete object from S3
     $s3->deleteObject([
         'Bucket' => $bucket,
-        'Key' => $document['s3_key']
+        'Key'    => $document['s3_key']
     ]);
 
-    $stmt = $pdo->prepare("
+    // Delete record from database
+    $delete = $pdo->prepare("
         DELETE FROM documents
         WHERE id = ?
     ");
 
-    $stmt->execute([$id]);
+    $delete->execute([$id]);
 
-    flash('success', 'Document deleted from CloudFleet.');
+    if ($delete->rowCount() === 1) {
+        flash('success', 'Document deleted successfully.');
+    } else {
+        flash('error', 'S3 object was deleted, but database record was not removed.');
+    }
 
 } catch (Throwable $e) {
 
-    error_log($e->getMessage());
+    error_log('Document delete error: ' . $e->getMessage());
 
     flash(
         'error',
-        'Unable to delete document. Check S3 permissions.'
+        'Unable to delete document. Check AWS permissions.'
     );
 }
 
