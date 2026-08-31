@@ -30,6 +30,7 @@ if ($isEdit) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
     $vehicle = [
         'vehicle_code' => trim($_POST['vehicle_code'] ?? ''),
         'registration_number' => trim($_POST['registration_number'] ?? ''),
@@ -116,6 +117,7 @@ page_start($isEdit ? 'Edit Vehicle' : 'Add Vehicle', 'vehicles');
 
 <div class="panel">
 <form class="form-grid" method="POST">
+    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
     <div class="form-group"><label>Vehicle Code *</label><input name="vehicle_code" value="<?= e($vehicle['vehicle_code']) ?>" required></div>
     <div class="form-group"><label>Registration *</label><input name="registration_number" value="<?= e($vehicle['registration_number']) ?>" required></div>
     <div class="form-group full"><label>Vehicle Name *</label><input name="vehicle_name" value="<?= e($vehicle['vehicle_name']) ?>" required></div>

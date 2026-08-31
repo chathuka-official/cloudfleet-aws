@@ -42,6 +42,7 @@ $drivers = $pdo->query("SELECT * FROM drivers WHERE status NOT IN ('ON_LEAVE','I
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
     $tour = [
         'tour_code' => trim($_POST['tour_code'] ?? ''),
         'title' => trim($_POST['title'] ?? ''),
@@ -144,6 +145,7 @@ page_start($isEdit ? 'Edit Tour' : 'Create Tour', 'tours');
 
 <div class="panel">
 <form class="form-grid" method="POST">
+    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
     <div class="form-group"><label>Tour Code *</label><input name="tour_code" value="<?= e($tour['tour_code']) ?>" required></div>
     <div class="form-group"><label>Title *</label><input name="title" value="<?= e($tour['title']) ?>" required></div>
     <div class="form-group full"><label>Destination *</label><input name="destination" value="<?= e($tour['destination']) ?>" required></div>

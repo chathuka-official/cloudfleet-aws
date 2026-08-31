@@ -33,6 +33,7 @@ if ($isEdit) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
     $driver = [
         'driver_code' => trim($_POST['driver_code'] ?? ''),
         'full_name' => trim($_POST['full_name'] ?? ''),
@@ -116,6 +117,7 @@ page_start($isEdit ? 'Edit Driver' : 'Add Driver', 'drivers');
 
 <div class="panel">
 <form class="form-grid" method="POST">
+    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
     <div class="form-group"><label>Driver Code *</label><input name="driver_code" value="<?= e($driver['driver_code']) ?>" required></div>
     <div class="form-group"><label>Full Name *</label><input name="full_name" value="<?= e($driver['full_name']) ?>" required></div>
     <div class="form-group"><label>NIC / Employee ID</label><input name="nic_number" value="<?= e($driver['nic_number'] ?? '') ?>"></div>

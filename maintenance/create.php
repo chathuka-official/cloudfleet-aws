@@ -28,6 +28,7 @@ if ($isEdit) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD']==='POST') {
+    verify_csrf();
     $record = [
         'vehicle_id'=>filter_input(INPUT_POST,'vehicle_id',FILTER_VALIDATE_INT),
         'title'=>trim($_POST['title'] ?? ''),
@@ -67,6 +68,7 @@ page_start($isEdit ? 'Edit Maintenance' : 'Add Maintenance', 'maintenance');
 <?php if($error): ?><div class="alert error"><?= e($error) ?></div><?php endif; ?>
 <div class="panel">
 <form class="form-grid" method="POST">
+    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
     <div class="form-group full"><label>Vehicle *</label><select name="vehicle_id" required><option value="">Select</option><?php foreach($vehicles as $v): ?><option value="<?= (int)$v['id'] ?>" <?= (int)$record['vehicle_id']===(int)$v['id']?'selected':'' ?>><?= e($v['vehicle_code'].' - '.$v['vehicle_name']) ?></option><?php endforeach; ?></select></div>
     <div class="form-group full"><label>Title *</label><input name="title" value="<?= e($record['title']) ?>" required></div>
     <div class="form-group"><label>Date *</label><input type="date" name="maintenance_date" value="<?= e($record['maintenance_date']) ?>" required></div>

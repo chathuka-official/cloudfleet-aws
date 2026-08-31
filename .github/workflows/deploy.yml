@@ -36,6 +36,13 @@ jobs:
           zip -r cloudfleet.zip . \
             -x ".git/*" \
             -x ".github/*" \
+            -x "aws/*" \
+            -x "database/migrate.php" \
+            -x "database/migrations/*" \
+            -x "README.md" \
+            -x "FINAL_CHECKLIST.md" \
+            -x ".env.example" \
+            -x ".gitattributes" \
             -x "*.zip"
 
       - name: Upload deployment bundle to S3

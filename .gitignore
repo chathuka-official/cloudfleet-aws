@@ -10,3 +10,5 @@ vendor/
 .DS_Store
 Thumbs.db
 .elasticbeanstalk/
+__pycache__/
+*.pyc

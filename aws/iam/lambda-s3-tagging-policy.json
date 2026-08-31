@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudFleetS3Tagging",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObjectTagging"
+      ],
+      "Resource": "arn:aws:s3:::cloudfleet-documents-cloudfleet-2026/*"
+    }
+  ]
+}

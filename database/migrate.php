@@ -3,98 +3,53 @@
 require_once __DIR__ . '/../config/database.php';
 
 $isCli = PHP_SAPI === 'cli';
-
-$allowHttp =
-    ($_SERVER['ALLOW_MIGRATIONS']
-    ?? getenv('ALLOW_MIGRATIONS')
-    ?: '') === '1';
+$allowHttp = ($_SERVER['ALLOW_MIGRATIONS'] ?? getenv('ALLOW_MIGRATIONS') ?: '') === '1';
 
 if (!$isCli && !$allowHttp) {
-
     http_response_code(403);
+    die('Migrations are disabled. Set ALLOW_MIGRATIONS=1 temporarily, run the migration, then remove it.');
+}
 
-    die(
-        'Migrations are disabled. '
-        . 'Set ALLOW_MIGRATIONS=1 temporarily.'
-    );
+function column_exists(PDO $pdo, string $table, string $column): bool
+{
+    $stmt = $pdo->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
+    $stmt->execute([$column]);
+    return (bool)$stmt->fetch();
+}
+
+function index_exists(PDO $pdo, string $table, string $index): bool
+{
+    $stmt = $pdo->prepare("SHOW INDEX FROM `$table` WHERE Key_name = ?");
+    $stmt->execute([$index]);
+    return (bool)$stmt->fetch();
 }
 
 try {
+    $schemaFile = __DIR__ . '/migrations/001_cloudfleet_schema.sql';
+    $sql = file_get_contents($schemaFile);
+    $statements = array_filter(array_map('trim', preg_split('/;\s*(?:\r?\n|$)/', $sql)));
 
-    /*
-     * Check if deleted_at exists
-     */
-    $stmt = $pdo->query("
-        SHOW COLUMNS
-        FROM documents
-        LIKE 'deleted_at'
-    ");
-
-    if (!$stmt->fetch()) {
-
-        $pdo->exec("
-            ALTER TABLE documents
-            ADD COLUMN deleted_at
-            DATETIME NULL DEFAULT NULL
-        ");
-
-        echo "Added deleted_at.<br>";
+    foreach ($statements as $statement) {
+        if ($statement !== '') {
+            $pdo->exec($statement);
+        }
     }
 
-
-    /*
-     * Check if delete_marker_version_id exists
-     */
-    $stmt = $pdo->query("
-        SHOW COLUMNS
-        FROM documents
-        LIKE 'delete_marker_version_id'
-    ");
-
-    if (!$stmt->fetch()) {
-
-        $pdo->exec("
-            ALTER TABLE documents
-            ADD COLUMN delete_marker_version_id
-            VARCHAR(255) NULL DEFAULT NULL
-        ");
-
-        echo "Added delete_marker_version_id.<br>";
+    if (!column_exists($pdo, 'documents', 'deleted_at')) {
+        $pdo->exec("ALTER TABLE documents ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL");
     }
 
-
-    /*
-     * Check if index exists
-     */
-    $stmt = $pdo->query("
-        SHOW INDEX
-        FROM documents
-        WHERE Key_name = 'idx_documents_deleted_at'
-    ");
-
-    if (!$stmt->fetch()) {
-
-        $pdo->exec("
-            CREATE INDEX idx_documents_deleted_at
-            ON documents(deleted_at)
-        ");
-
-        echo "Added deleted_at index.<br>";
+    if (!column_exists($pdo, 'documents', 'delete_marker_version_id')) {
+        $pdo->exec("ALTER TABLE documents ADD COLUMN delete_marker_version_id VARCHAR(255) NULL DEFAULT NULL");
     }
 
+    if (!index_exists($pdo, 'documents', 'idx_documents_deleted_at')) {
+        $pdo->exec("CREATE INDEX idx_documents_deleted_at ON documents(deleted_at)");
+    }
 
-    echo "<br><strong>CloudFleet migration completed successfully.</strong>";
-
-
+    echo 'CloudFleet database migration completed successfully.';
 } catch (PDOException $e) {
-
-    error_log(
-        'Migration error: '
-        . $e->getMessage()
-    );
-
+    error_log('Migration failed: ' . $e->getMessage());
     http_response_code(500);
-
-    echo "Migration failed: "
-        . htmlspecialchars($e->getMessage());
+    die('Migration failed. Check the server logs for details.');
 }
