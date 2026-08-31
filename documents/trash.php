@@ -16,7 +16,7 @@ page_start('Document Recycle Bin', 'documents');
 <div class="page-header">
     <div>
         <h1>Recycle Bin</h1>
-        <p>Deleted S3 documents that can still be restored.</p>
+        <p>Deleted documents that can still be restored.</p>
     </div>
     <a class="btn btn-secondary" href="index.php">Back to Documents</a>
 </div>

@@ -18,7 +18,7 @@ page_start('Documents', 'documents');
 <div class="page-header">
     <div>
         <h1>Documents</h1>
-        <p>Private Amazon S3 document storage for CloudFleet.</p>
+        <p>Upload and manage documents.</p>
     </div>
 
     <div class="actions">
@@ -30,7 +30,7 @@ page_start('Documents', 'documents');
 </div>
 
 <?php if (!$s3Bucket): ?>
-    <div class="alert warning">Amazon S3 is not configured for this environment.</div>
+    <div class="alert warning">Document storage is not configured.</div>
 <?php endif; ?>
 
 <div class="panel table-panel">

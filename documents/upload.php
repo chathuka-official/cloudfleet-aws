@@ -5,7 +5,7 @@ require_once __DIR__ . '/../includes/layout.php';
 
 $autoload = __DIR__ . '/../vendor/autoload.php';
 if (!file_exists($autoload)) {
-    die('AWS SDK is not installed.');
+    die('Document storage is unavailable.');
 }
 require_once $autoload;
 
@@ -15,7 +15,7 @@ $bucket = $_SERVER['S3_BUCKET'] ?? getenv('S3_BUCKET') ?: '';
 $region = $_SERVER['AWS_REGION'] ?? getenv('AWS_REGION') ?: 'ap-south-1';
 
 if ($bucket === '') {
-    die('S3 bucket is not configured.');
+    die('Document storage is not configured.');
 }
 
 $error = '';
@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $file['size']
                     ]);
 
-                    flash('success', 'Document uploaded to Amazon S3.');
+                    flash('success', 'Document uploaded successfully.');
                     redirect('index.php');
                 } catch (Throwable $e) {
                     error_log('S3 upload error: ' . $e->getMessage());
@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
 
-                    $error = 'Upload failed. Check the AWS configuration and try again.';
+                    $error = 'Upload failed. Please try again.';
                 }
             }
         }
@@ -115,7 +115,7 @@ page_start('Upload Document', 'documents');
 <div class="page-header">
     <div>
         <h1>Upload Document</h1>
-        <p>Store a CloudFleet document securely in Amazon S3.</p>
+        <p>Upload a document for a vehicle, driver or tour.</p>
     </div>
     <a class="btn btn-secondary" href="index.php">Back</a>
 </div>
@@ -156,7 +156,7 @@ page_start('Upload Document', 'documents');
         </div>
 
         <div class="form-actions">
-            <button class="btn btn-primary" type="submit">Upload to S3</button>
+            <button class="btn btn-primary" type="submit">Upload Document</button>
             <a class="btn btn-secondary" href="index.php">Cancel</a>
         </div>
     </form>

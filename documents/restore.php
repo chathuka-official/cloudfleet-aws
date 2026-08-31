@@ -5,7 +5,7 @@ require_once __DIR__ . '/../includes/functions.php';
 
 $autoload = __DIR__ . '/../vendor/autoload.php';
 if (!file_exists($autoload)) {
-    die('AWS SDK is not installed.');
+    die('Document storage is unavailable.');
 }
 require_once $autoload;
 
@@ -38,7 +38,7 @@ if (!$document) {
 }
 
 if (empty($document['delete_marker_version_id'])) {
-    flash('error', 'S3 delete marker information is missing.');
+    flash('error', 'Restore information is missing.');
     redirect('trash.php');
 }
 
@@ -46,7 +46,7 @@ $bucket = $_SERVER['S3_BUCKET'] ?? getenv('S3_BUCKET') ?: '';
 $region = $_SERVER['AWS_REGION'] ?? getenv('AWS_REGION') ?: 'ap-south-1';
 
 if ($bucket === '') {
-    flash('error', 'S3 bucket is not configured.');
+    flash('error', 'Document storage is not configured.');
     redirect('trash.php');
 }
 
@@ -69,10 +69,10 @@ try {
     ");
     $update->execute([$id]);
 
-    flash('success', 'Document restored successfully from Amazon S3.');
+    flash('success', 'Document restored successfully.');
     redirect('index.php');
 } catch (Throwable $e) {
     error_log('Document restore error: ' . $e->getMessage());
-    flash('error', 'Unable to restore the document. Check the S3 IAM permissions.');
+    flash('error', 'Unable to restore the document. Please try again.');
     redirect('trash.php');
 }

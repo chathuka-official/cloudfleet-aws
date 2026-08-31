@@ -5,7 +5,7 @@ require_once __DIR__ . '/../includes/functions.php';
 
 $autoload = __DIR__ . '/../vendor/autoload.php';
 if (!file_exists($autoload)) {
-    die('AWS SDK is not installed.');
+    die('Document storage is unavailable.');
 }
 require_once $autoload;
 
@@ -41,7 +41,7 @@ $bucket = $_SERVER['S3_BUCKET'] ?? getenv('S3_BUCKET') ?: '';
 $region = $_SERVER['AWS_REGION'] ?? getenv('AWS_REGION') ?: 'ap-south-1';
 
 if ($bucket === '') {
-    flash('error', 'S3 bucket is not configured.');
+    flash('error', 'Document storage is not configured.');
     redirect('index.php');
 }
 
@@ -71,7 +71,7 @@ try {
     flash('success', 'Document moved to the recycle bin.');
 } catch (Throwable $e) {
     error_log('Document delete error: ' . $e->getMessage());
-    flash('error', 'Unable to delete the document. Check S3 permissions and versioning.');
+    flash('error', 'Unable to delete the document. Please try again.');
 }
 
 redirect('index.php');

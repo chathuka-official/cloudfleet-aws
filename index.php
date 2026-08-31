@@ -28,7 +28,7 @@ page_start('Dashboard', 'root');
 <div class="page-header">
     <div>
         <h1>Operations Dashboard</h1>
-        <p>Fleet and tour operations running on AWS.</p>
+        <p>Quick overview of fleet operations.</p>
     </div>
     <a class="btn btn-primary" href="tours/create.php">+ Create Tour</a>
 </div>
@@ -77,17 +77,5 @@ page_start('Dashboard', 'root');
     <?php endif; ?>
 </div>
 
-<div style="margin-top:20px;">
-    <h2 style="margin-bottom:4px;">AWS Integration</h2>
-    <p class="muted">Services used in this hands-on deployment.</p>
-
-    <div class="aws-grid">
-        <div class="aws-card"><strong>Elastic Beanstalk</strong><span>PHP application deployment</span></div>
-        <div class="aws-card"><strong>Amazon RDS</strong><span>MySQL application database</span></div>
-        <div class="aws-card"><strong>Amazon S3</strong><span>Private versioned documents</span></div>
-        <div class="aws-card"><strong>AWS Lambda</strong><span>S3 upload event processing</span></div>
-        <div class="aws-card"><strong>GitHub Actions</strong><span>OIDC CI/CD deployment</span></div>
-    </div>
-</div>
 
 <?php page_end(); ?>

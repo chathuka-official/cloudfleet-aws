@@ -34,7 +34,6 @@ input, select, textarea, button { font: inherit; }
 }
 
 .brand { font-size: 24px; font-weight: 800; }
-.environment { color: #cbd5e1; font-size: 14px; }
 
 .layout { display: flex; min-height: calc(100vh - 72px); }
 
@@ -253,7 +252,6 @@ td { padding: 15px 16px; border-bottom: 1px solid var(--line); vertical-align: t
     .filters select { width: 100%; }
     .panel { overflow-x: auto; }
     .topbar { padding: 0 16px; }
-    .environment { display: none; }
 }
 
 /* Final responsive touches */
@@ -288,43 +286,9 @@ td { padding: 15px 16px; border-bottom: 1px solid var(--line); vertical-align: t
     margin-top: 6px;
 }
 
-.aws-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 12px;
-    margin-top: 18px;
-}
-
-.aws-card {
-    padding: 16px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background: #fff;
-}
-
-.aws-card strong {
-    display: block;
-    margin-bottom: 4px;
-}
-
-.aws-card span {
-    color: var(--muted);
-    font-size: 12px;
-}
-
-.footer {
-    color: #94a3b8;
-    font-size: 12px;
-    text-align: center;
-    padding: 28px 0 8px;
-}
 
 .sidebar-backdrop {
     display: none;
-}
-
-@media (max-width: 1150px) {
-    .aws-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 1000px) {
@@ -354,7 +318,6 @@ td { padding: 15px 16px; border-bottom: 1px solid var(--line); vertical-align: t
 }
 
 @media (max-width: 720px) {
-    .aws-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .content { padding: 18px 14px; }
     .page-header h1 { font-size: 26px; }
     th, td { white-space: nowrap; }

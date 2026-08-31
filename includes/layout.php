@@ -13,7 +13,7 @@ function page_start(string $title, string $active = ''): void
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="description" content="CloudFleet - AWS fleet and tour operations demo">
+        <meta name="description" content="CloudFleet - fleet and tour management system">
         <title><?= e($title) ?> | CloudFleet</title>
         <link rel="stylesheet" href="<?= e($prefix) ?>assets/css/app.css">
     </head>
@@ -23,7 +23,6 @@ function page_start(string $title, string $active = ''): void
             <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation">☰</button>
             <a class="brand" href="<?= e($prefix) ?>index.php">☁ CloudFleet</a>
         </div>
-        <div class="environment">AWS Hands-on Demo</div>
     </header>
 
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -46,7 +45,7 @@ function page_start(string $title, string $active = ''): void
             <a class="<?= $active === 'drivers' ? 'active' : '' ?>" href="<?= e($prefix) ?>drivers/">Drivers</a>
 
             <div class="sidebar-title">FILES</div>
-            <a class="<?= $active === 'documents' ? 'active' : '' ?>" href="<?= e($prefix) ?>documents/">Documents (S3)</a>
+            <a class="<?= $active === 'documents' ? 'active' : '' ?>" href="<?= e($prefix) ?>documents/">Documents</a>
         </aside>
 
         <main class="content">
@@ -62,7 +61,6 @@ function page_end(): void
 {
     $scriptPrefix = $GLOBALS['cloudfleet_prefix'] ?? '';
     ?>
-            <footer class="footer">CloudFleet · AWS hands-on fleet operations demo</footer>
         </main>
     </div>
     <script src="<?= e($scriptPrefix) ?>assets/js/app.js"></script>
